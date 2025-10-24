@@ -1,4 +1,3 @@
-
 # E-Sentinel  
 **SOS Emergency Alert Application**
 
@@ -29,13 +28,16 @@ E-Sentinel is an SOS emergency alert application designed to respond to voice co
 - **Multilingual Support**  
   Recognizes multiple languages — English, Hindi, and Telugu — through offline models.
 
+- **Customizable Emergency Contacts**  
+  **Update your mobile numbers** in the app before use to ensure alerts reach the correct people.
+
 ---
 
 ## Setup & Installation
 
 ### 1. Clone the Repository
 ```bash
-git clone https://github.com/<your-username>/E-Sentinel.git
+git clone https://github.com/E-Sentinel-Project/E-Sentinel.git
 cd E-Sentinel
 ````
 
@@ -82,6 +84,7 @@ private val modelMap = mapOf(
 
    * User’s live location
    * Preset emergency message
+   * **Custom emergency contacts** (update mobile numbers in the code before use)
 
 4. Optional features:
 
@@ -100,6 +103,9 @@ private val modelMap = mapOf(
 * **NewsData.io API**
 
 ---
+## Pending Works
+* Settings page to edit mobile numbers (For now the mobile numbers are hard-coded)
+* Running the VOSK model as a background service
 
 
 ## Contributors
@@ -110,4 +116,3 @@ For contributions or issues — please open a Pull Request or Issue.
 ---
 
 **E-Sentinel** — *Emergency response that works offline and in real-time.*
-
