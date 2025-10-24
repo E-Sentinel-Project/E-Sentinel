@@ -295,7 +295,7 @@ class MainActivity : AppCompatActivity(), RecognitionListener {
 //        // SOS Button -> Send SMS via Twilio
 //        val btnSOS: Button = findViewById(R.id.btnSOS)
 //        btnSOS.setOnClickListener {
-//            val phoneNumber = "+916356479345"  // replace with target number
+//            val phoneNumber = "phone_number"  // replace with target number
 //            val latitude = location.latitude
 //            val longitude = location.longitude
 //            val mapsLink = "https://www.google.com/maps?q=$latitude,$longitude"
@@ -331,8 +331,8 @@ class MainActivity : AppCompatActivity(), RecognitionListener {
                                     try {
                                         val sid = BuildConfig.TWILIO_ACCOUNT_SID
                                         val auth = BuildConfig.TWILIO_AUTH_TOKEN
-                                        val fromPhone = "+18507573884"   // Twilio SMS number
-                                        val toPhone = "+916356479345" // target number (your real phone)
+                                        val fromPhone = "phone_number"   // Twilio SMS number
+                                        val toPhone = "phone_number" // target number (your real phone)
 
                                         val formBody = FormBody.Builder()
                                             .add("From", fromPhone)
@@ -368,8 +368,8 @@ class MainActivity : AppCompatActivity(), RecognitionListener {
                                     try {
                                         val sid = BuildConfig.TWILIO_ACCOUNT_SID
                                         val auth = BuildConfig.TWILIO_AUTH_TOKEN
-                                        val fromWhatsapp = "whatsapp:+14155238886"  // Twilio WhatsApp number
-                                        val toWhatsapp = "whatsapp:+916356479345"   // target WhatsApp number
+                                        val fromWhatsapp = "whatsapp:phone_number"  // Twilio WhatsApp number
+                                        val toWhatsapp = "whatsapp:phone_number"   // target WhatsApp number
 
                                         val formBody = FormBody.Builder()
                                             .add("From", fromWhatsapp)
@@ -800,8 +800,8 @@ class MainActivity : AppCompatActivity(), RecognitionListener {
             try {
                 val sid = BuildConfig.TWILIO_ACCOUNT_SID
                 val auth = BuildConfig.TWILIO_AUTH_TOKEN
-                val fromPhone = "+18507573884" // Replace with your Twilio number
-                val toPhone = "+916356479345" // Replace with destination number
+                val fromPhone = "phone_number" // Replace with your Twilio number
+                val toPhone = "phone_number" // Replace with destination number
                 val message =
                     "🚨 SOS Alert! Location: https://maps.google.com/?q=$latitude,$longitude"
 
