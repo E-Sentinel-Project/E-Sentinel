@@ -28,12 +28,12 @@ android {
         versionCode = 1
         versionName = "1.0"
 
-        buildConfigField("String", "GOOGLE_MAPS_API_KEY", "\"AIzaSyCLrbiALsHJaws5VnT3vvLL_daT8oSn8Fc\"")
-        buildConfigField("String", "GOOGLE_ROADS_API_KEY", "\"AIzaSyCLrbiALsHJaws5VnT3vvLL_daT8oSn8Fc\"")
-        buildConfigField("String", "NEWS_API_KEY", "\"pub_d7d6144419e5462daf5fd41bd4f3301e\"")
-        buildConfigField("String", "GEMINI_API_KEY", "\"AIzaSyCQWbrBN5FhRlbRALyccu6Bgn3LXd8xTtQ\"")
-        buildConfigField("String", "TWILIO_ACCOUNT_SID", "\"ACad9cb45cb80e2da4c5a706ae9209e2db\"")
-        buildConfigField("String", "TWILIO_AUTH_TOKEN", "\"b018db60b04b5a414d7f368dc20f0f64\"")
+        buildConfigField("String", "GOOGLE_MAPS_API_KEY", "\"YOUR_GOOGLE_MAPS_API_KEY\"")
+        buildConfigField("String", "GOOGLE_ROADS_API_KEY", "\"YOUR_GOOGLE_ROADS_API_KEY\"")
+        buildConfigField("String", "NEWS_API_KEY", "\"YOUR_NEWS_API_KEY\"")
+        buildConfigField("String", "GEMINI_API_KEY", "\"YOUR_GEMINI_API_KEY\"")
+        buildConfigField("String", "TWILIO_ACCOUNT_SID", "\"YOUR_TWILIO_ACCOUNT_SID\"")
+        buildConfigField("String", "TWILIO_AUTH_TOKEN", "\"YOUR_TWILIO_AUTH_TOKEN\"")
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
