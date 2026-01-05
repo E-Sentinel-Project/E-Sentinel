@@ -1,0 +1,39 @@
+<resources>
+    <string name="app_name">e-sentinel</string>
+    <string name="select_model">Select Language Model:</string>
+    <string name="status">Status:</string>
+    <string name="partial_result">Partial Result:</string>
+    <string name="final_result">Final Result:</string>
+    <string name="waiting">Waiting...</string>
+    <string name="partial_placeholder">Partial result will appear here</string>
+    <string name="final_placeholder">Final result will appear here</string>
+
+    <string name="start_detection">Start Detection</string>
+    <string name="stop_detection">Stop Detection</string>
+    <string name="pause">Pause</string>
+    <string name="resume">Resume</string>
+    <string name="light">Light</string>
+    <string name="dark">Dark</string>
+
+    <string name="no_model_selected">No model selected.</string>
+    <string name="select_model_first">Select a model first.</string>
+    <string name="loading_model">Loading %1$s...</string>
+    <string name="model_loaded"> %1$s loaded. Ready!</string>
+    <string name="failed_load_model">Failed to load model: %1$s</string>
+    <string name="listening">Listening...</string>
+    <string name="mic_error">Mic error: %1$s</string>
+    <string name="detection_stopped">Detection stopped.</string>
+    <string name="detection_paused">Detection paused.</string>
+    <string name="detection_resumed">Detection resumed.</string>
+    <string name="error">Error: %1$s</string>
+    <string name="permission_granted">Permission granted. Select a model to start.</string>
+    <string name="waiting_permission">Select a model to start.</string>
+    <string name="speech_detection">Speech Detection</string>
+    <string name="send_sos">Send SOS</string>
+    <string name="optimal_route">Optimal Route</string>
+    <string name="ask_gemini_ai">Ask Gemini AI</string>
+    <string name="get_local_weather">Get Local Weather</string>
+    <string name="get_latest_news">Get Latest News</string>
+    <string name="medical_emergency">Medical Emergency</string>
+    <string name="sos_emergency_app">SOS Emergency Services</string>
+</resources>

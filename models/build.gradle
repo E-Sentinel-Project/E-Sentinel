@@ -1,0 +1,41 @@
+apply plugin: 'com.android.library'
+
+android {
+    namespace "org.vosk.models"
+    compileSdkVersion 36
+
+    defaultConfig {
+        minSdkVersion 24
+        targetSdkVersion 36
+    }
+
+    buildFeatures {
+        buildConfig = false
+    }
+
+    sourceSets {
+        main {
+            assets.srcDirs += "$buildDir/generated/assets"
+        }
+    }
+}
+
+// Generate UUID for all models under src/main/assets
+tasks.register('genUUID') {
+    def assetsDir = file("src/main/assets")
+    def generatedDir = file("$buildDir/generated/assets")
+
+    doLast {
+        assetsDir.listFiles()?.findAll { it.isDirectory() }?.each { modelDir ->
+            def modelName = modelDir.name
+            def odir = file("$generatedDir/$modelName")
+            mkdir odir
+            def ofile = file("$odir/uuid")
+            ofile.text = UUID.randomUUID().toString()
+            println "Generated uuid for model: $modelName"
+        }
+    }
+}
+
+// Make sure UUIDs are generated before build
+preBuild.dependsOn(tasks.named('genUUID'))
