@@ -86,18 +86,19 @@ buildConfigField("String", "GEMINI_API_KEY", "\"YOUR_API_KEY\"")
 buildConfigField("String", "TWILIO_ACCOUNT_SID", "\"YOUR_API_KEY\"")
 buildConfigField("String", "TWILIO_AUTH_TOKEN", "\"YOUR_API_KEY\"")
 buildConfigField("String", "OPEN_WEATHER_MAP_API_KEY", "\"YOUR_API_KEY\"")
-
-buildConfigField("String", "TWILIO_PHONE_NUMBER", "\"YOUR_TWILIO_PHONE_NUMBER\"")
+buildConfigField("String", "TWILIO_SMS_NUMBER", "\"YOUR_TWILIO_PHONE_NUMBER\"")
+buildConfigField("String", "TWILIO_WHATSAPP_NUMBER", "\"whatsapp:TWILIO_WHATSAPP_NUMBER\"")
 buildConfigField("String", "ALERT_PHONE_NUMBER", "\"YOUR_ALERT_PHONE_NUMBER\"")
+buildConfigField("String", "Whatsapp_ALERT_PHONE_NUMBER", "\"whatsapp:YOUR_WHATSAPP_NUMBER\"") 
 ```
 
 **Important Notes:**
 
 * Replace all `YOUR_API_KEY` values with valid keys from the respective services.
-* Update `TWILIO_PHONE_NUMBER` with your Twilio-registered number.
+* Update `TWILIO_SMS_NUMBER` with your Twilio-registered number.
 * Update `ALERT_PHONE_NUMBER` with the emergency contact number that should receive alerts.
 * These values are compiled into `BuildConfig` and accessed securely at runtime.
-
+* To send SOS via Twilio Whatsapp write contact number after a prefix of "whatsapp:".
 ---
 
 ### 3. Add Offline Voice Models
@@ -695,9 +696,19 @@ private fun fetchLocalWeather(latitude: Double, longitude: Double) {
 <a id="offline-sos"></a>
 ## Offline-SOS Messages
 
-The SOS module implements a dual communication pathway to ensure reliability under varying network conditions. 
-Internet-enabled alerts are dispatched using the Twilio API, whereas offline scenarios leverage Android’s native 
-SMS interface with an automatically populated SOS message, thereby reducing response latency during critical emergencies.
+The SOS module is the most comprehensive component of the E-Sentinel framework, 
+integrating multiple emergency-trigger mechanisms, including:
+
+1. SendSOS button
+2. Neutrosophic logic-based Fall detection
+3. double-tap SOS
+4. SOS initiation through distress keywords
+
+To ensure reliable operation under varying connectivity conditions, a dual communication strategy is employed. 
+When internet access is available, SOS alerts are transmitted through the Twilio cloud service. In offline environments, the system 
+seamlessly switches to the Android native SMS interface, where a pre-filled emergency message is automatically prepared 
+for the designated contact, requiring only a single user action to send. This dual-mode design minimizes alert latency and enhances 
+system reliability, which is particularly critical in time-sensitive emergency scenarios where even minor delays can significantly affect outcomes.
 
 ```kotlin
 private fun openSmsAppWithMessage(latitude: Double, longitude: Double) {
