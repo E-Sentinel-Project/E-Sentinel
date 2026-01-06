@@ -550,11 +550,21 @@ class MainActivity : AppCompatActivity(), RecognitionListener {
                 .setTitle("Choose SOS Option")
                 .setItems(options) { _, which ->
                     getLocation { lat, lon ->
+                        if (!isInternetAvailable()) {
+                            openSmsAppWithMessage(lat, lon)
+                            Toast.makeText(
+                                this,
+                                "No internet. Opening SMS app for offline SOS.",
+                                Toast.LENGTH_LONG
+                            ).show()
+                            return@getLocation
+                        }
+
                         val mapsLink = "https://www.google.com/maps?q=$lat,$lon"
                         val message = "🚨 SOS Alert! Please help me! My live location: $mapsLink"
 
                         when (which) {
-                            // 1️⃣ SMS via Twilio
+                            //  SMS via Twilio
                             0 -> {
                                 Thread {
                                     try {
@@ -591,14 +601,14 @@ class MainActivity : AppCompatActivity(), RecognitionListener {
                                 }.start()
                             }
 
-                            // 2️⃣ WhatsApp via Twilio
+                            //WhatsApp via Twilio
                             1 -> {
                                 Thread {
                                     try {
                                         val sid = BuildConfig.TWILIO_ACCOUNT_SID
                                         val auth = BuildConfig.TWILIO_AUTH_TOKEN
                                         val fromWhatsapp = BuildConfig.TWILIO_WHATSAPP_NUMBER
-                                        val toWhatsapp = BuildConfig.ALERT_PHONE_NUMBER
+                                        val toWhatsapp = BuildConfig.Whatsapp_ALERT_PHONE_NUMBER
 
                                         val formBody = FormBody.Builder()
                                             .add("From", fromWhatsapp)
@@ -1024,7 +1034,42 @@ class MainActivity : AppCompatActivity(), RecognitionListener {
             }
     }
 
+    private fun isInternetAvailable(): Boolean {
+        val cm = getSystemService(CONNECTIVITY_SERVICE) as android.net.ConnectivityManager
+        val network = cm.activeNetwork ?: return false
+        val capabilities = cm.getNetworkCapabilities(network) ?: return false
+        return capabilities.hasCapability(android.net.NetworkCapabilities.NET_CAPABILITY_INTERNET)
+    }
+
+    private fun openSmsAppWithMessage(latitude: Double, longitude: Double) {
+        val phoneNumber = BuildConfig.ALERT_PHONE_NUMBER
+        val message =
+            "SOS ALERT!\n" +
+                    "Immediate help needed.\n" +
+                    "Location: https://maps.google.com/?q=$latitude,$longitude"
+
+        val intent = Intent(Intent.ACTION_SENDTO).apply {
+            data = Uri.parse("smsto:$phoneNumber")
+            putExtra("sms_body", message)
+        }
+
+        try {
+            startActivity(intent)
+        } catch (e: Exception) {
+            Toast.makeText(this, "No SMS app available", Toast.LENGTH_SHORT).show()
+        }
+    }
+
     private fun sendSOS(latitude: Double, longitude: Double) {
+        if (!isInternetAvailable()) {
+            openSmsAppWithMessage(latitude, longitude)
+            Toast.makeText(
+                this,
+                "No internet. Opening SMS app for offline SOS.",
+                Toast.LENGTH_LONG
+            ).show()
+            return
+        }
         Thread {
             try {
                 val sid = BuildConfig.TWILIO_ACCOUNT_SID
