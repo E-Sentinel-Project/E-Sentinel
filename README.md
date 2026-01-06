@@ -20,6 +20,7 @@ E-Sentinel is an SOS emergency alert application designed to respond to voice co
     - [Traffic-Aware Route Calculation](#traffic-aware-route-calculation)
     - [Location-Based News Aggregation](#location-based-news-aggregation)
     - [Local Weather Monitoring](#local-weather-monitoring)
+    - [Offline SOS](#offline-sos)
 - [Tech Stack](#tech-stack)
 - [Pending Works](#pending-works)
 - [Contributors](#contributors)
@@ -689,6 +690,34 @@ private fun fetchLocalWeather(latitude: Double, longitude: Double) {
 
         // display obtained weather info
     }.start()}
+```
+
+<a id="offline-sos"></a>
+## Offline-SOS Messages
+
+The SOS module implements a dual communication pathway to ensure reliability under varying network conditions. 
+Internet-enabled alerts are dispatched using the Twilio API, whereas offline scenarios leverage Android’s native 
+SMS interface with an automatically populated SOS message, thereby reducing response latency during critical emergencies.
+
+```kotlin
+private fun openSmsAppWithMessage(latitude: Double, longitude: Double) {
+    val phoneNumber = BuildConfig.ALERT_PHONE_NUMBER
+    val message =
+        "SOS ALERT!\n" +
+        "Immediate help needed.\n" +
+        "Location: https://maps.google.com/?q=$latitude,$longitude"
+
+    val intent = Intent(Intent.ACTION_SENDTO).apply {
+        data = Uri.parse("smsto:$phoneNumber")
+        putExtra("sms_body", message)
+    }
+
+    try {
+        startActivity(intent)
+    } catch (e: Exception) {
+        Toast.makeText(this, "No SMS app available", Toast.LENGTH_SHORT).show()
+    }
+}
 ```
 
 ---
