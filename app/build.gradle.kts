@@ -36,8 +36,9 @@ android {
         buildConfigField("String", "TWILIO_AUTH_TOKEN", "\"YOUR_API_KEY\"")
         buildConfigField("String", "OPEN_WEATHER_MAP_API_KEY", "\"YOUR_API_KEY\"")
         buildConfigField("String", "TWILIO_SMS_NUMBER", "\"YOUR_TWILIO_SMS_NUMBER\"") // Twilio SMS number
-        buildConfigField("String", "TWILIO_WHATSAPP_NUMBER", "\"YOUR_TWILIO_WHATSAPP_NUMBER\"") // Twilio whatsapp number
+        buildConfigField("String", "TWILIO_WHATSAPP_NUMBER", "\"whatsapp:YOUR_TWILIO_WHATSAPP_NUMBER\"") // Twilio whatsapp number
         buildConfigField("String", "ALERT_PHONE_NUMBER", "\"YOUR_ALERT_PHONE_NUMBER\"") // Emergency contact
+        buildConfigField("String", "Whatsapp_ALERT_PHONE_NUMBER", "\"whatsapp:YOUR_WHATSAPP_NUMBER\"") // For sending SOS through Whatsapp
 
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
