@@ -518,30 +518,6 @@ class MainActivity : AppCompatActivity(), RecognitionListener {
 
         sensorManager.registerListener(sensorListener, accelerometer, SensorManager.SENSOR_DELAY_NORMAL)
 
-
-
-
-//        // SOS Button -> Send SMS via Twilio
-//        val btnSOS: Button = findViewById(R.id.btnSOS)
-//        btnSOS.setOnClickListener {
-//            val phoneNumber = "phone_number"  // replace with target number
-//            val latitude = location.latitude
-//            val longitude = location.longitude
-//            val mapsLink = "https://www.google.com/maps?q=$latitude,$longitude"
-//            val message = "🚨 SOS Alert! Please help me! My live location: $mapsLink"
-//            val intent = Intent(Intent.ACTION_VIEW)
-//            intent.data = Uri.parse(
-//                "https://wa.me/${phoneNumber.replace("+", "")}?text=${Uri.encode(message)}"
-//            )
-//
-//            try {
-//                startActivity(intent)
-//            } catch (e: Exception) {
-//                Toast.makeText(this, "WhatsApp not installed!", Toast.LENGTH_SHORT).show()
-//            }
-//        }
-
-
         val btnSOS: Button = findViewById(R.id.btnSOS)
         btnSOS.setOnClickListener {
             val options = arrayOf("Send via SMS (Twilio)", "Send via WhatsApp (Twilio)")
