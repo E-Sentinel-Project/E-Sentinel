@@ -40,12 +40,12 @@ E-Sentinel is an SOS emergency alert application designed to respond to voice co
 
 - **Multiple SOS Triggers**
     - Voice command
-    - Fall detection
+    - Neutrosophic Fall detection
     - Double-tap (volume button)
     - Manual SOS button
 
 - **Fall Detection System**  
-  Uses the phone’s accelerometer to detect rapid acceleration followed by sudden inactivity.
+  Uses neutrosophic logic to make fall detection robust under noisy and ambiguous motion patterns.
 
 - **Multilingual Support**  
   Recognizes multiple languages — English, Hindi, and Telugu — through offline models.
@@ -80,9 +80,7 @@ Locate the `buildConfigField` entries and replace the placeholder values with yo
 
 ```kotlin
 buildConfigField("String", "GOOGLE_MAPS_API_KEY", "\"YOUR_API_KEY\"")
-buildConfigField("String", "GOOGLE_ROADS_API_KEY", "\"YOUR_API_KEY\"")
 buildConfigField("String", "NEWS_API_KEY", "\"YOUR_API_KEY\"")
-buildConfigField("String", "GEMINI_API_KEY", "\"YOUR_API_KEY\"")
 buildConfigField("String", "TWILIO_ACCOUNT_SID", "\"YOUR_API_KEY\"")
 buildConfigField("String", "TWILIO_AUTH_TOKEN", "\"YOUR_API_KEY\"")
 buildConfigField("String", "OPEN_WEATHER_MAP_API_KEY", "\"YOUR_API_KEY\"")
@@ -360,51 +358,54 @@ Once an emergency is confirmed, the system sends an SOS alert containing a **Goo
 
 ```kotlin
 private fun sendSOS(latitude: Double, longitude: Double) {
-    Thread{ // run on a separate thread
-        // load credentials and phone numbers
-        val sid = BuildConfig.TWILIO_ACCOUNT_SID
-        val auth = BuildConfig.TWILIO_AUTH_TOKEN
-        val fromPhone = "phone_number"
-        val toPhone = "phone_number"
-        val message =
-            "SOS Alert! Location: https://maps.google.com/?q=$latitude,$longitude"
-
-        // build the message structure
-        val formBody = FormBody.Builder()
-            .add("From", fromPhone)
-            .add("To", toPhone)
-            .add("Body", message)
-            .build()
-
-        // build an authenticated request to Twilio
-        val request = Request.Builder()
-            .url(
-                "https://api.twilio.com/2010-04-01/Accounts/$sid/Messages.json"
-            )
-            .post(formBody)
-            .header("Authorization", Credentials.basic(sid, auth))
-            .build()
-
-        // send the sos message
-        val response = client.newCall(request).execute()
-
-        // wait for response on a separate thread
-        runOnUiThread {
-            if (response.isSuccessful) { // message sent
-                Toast.makeText(
-                    this,
-                    "SOS Sent!",
-                    Toast.LENGTH_LONG
-                ).show()
-            } else { // message not sent
-                Toast.makeText(
-                    this,
-                    "Error: ${response.message}",
-                    Toast.LENGTH_SHORT
-                ).show()
-            }
+        if (!isInternetAvailable()) {
+            openSmsAppWithMessage(latitude, longitude)
+            Toast.makeText(
+                this,
+                "No internet. Opening SMS app for offline SOS.",
+                Toast.LENGTH_LONG
+            ).show()
+            return
         }
-    }.start()}
+        Thread {
+            try {
+                val sid = BuildConfig.TWILIO_ACCOUNT_SID
+                val auth = BuildConfig.TWILIO_AUTH_TOKEN
+                val fromPhone = BuildConfig.TWILIO_SMS_NUMBER
+                val toPhone = BuildConfig.ALERT_PHONE_NUMBER
+                val message = "🚨 SOS Alert! Location: https://maps.google.com/?q=$latitude,$longitude"
+
+                val formBody = FormBody.Builder()
+                    .add("From", fromPhone)
+                    .add("To", toPhone)
+                    .add("Body", message)
+                    .build()
+
+                val request = Request.Builder()
+                    .url("https://api.twilio.com/2010-04-01/Accounts/$sid/Messages.json")
+                    .post(formBody)
+                    .header("Authorization", Credentials.basic(sid, auth))
+                    .build()
+
+                val response = client.newCall(request).execute()
+                runOnUiThread {
+                    if (response.isSuccessful) {
+                        Toast.makeText(this, "SOS Sent!", Toast.LENGTH_LONG).show()
+                    } else {
+                        Toast.makeText(
+                            this,
+                            "Error: ${response.message}",
+                            Toast.LENGTH_SHORT
+                        ).show()
+                    }
+                }
+            } catch (e: Exception) {
+                runOnUiThread {
+                    Toast.makeText(this, "Error sending SOS", Toast.LENGTH_SHORT).show()
+                }
+            }
+        }.start()
+    }
 ```
 
 ---
