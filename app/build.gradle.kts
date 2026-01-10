@@ -29,9 +29,7 @@ android {
         versionName = "1.0"
 
         buildConfigField("String", "GOOGLE_MAPS_API_KEY", "\"YOUR_API_KEY\"")
-        buildConfigField("String", "GOOGLE_ROADS_API_KEY", "\"YOUR_API_KEY\"")
         buildConfigField("String", "NEWS_API_KEY", "\"YOUR_API_KEY\"")
-        buildConfigField("String", "GEMINI_API_KEY", "\"YOUR_API_KEY\"")
         buildConfigField("String", "TWILIO_ACCOUNT_SID", "\"YOUR_API_KEY\"")
         buildConfigField("String", "TWILIO_AUTH_TOKEN", "\"YOUR_API_KEY\"")
         buildConfigField("String", "OPEN_WEATHER_MAP_API_KEY", "\"YOUR_API_KEY\"")
