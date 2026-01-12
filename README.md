@@ -1,7 +1,7 @@
 # E-Sentinel
 **SOS Emergency Alert Application**
 
-E-Sentinel is an SOS emergency alert application designed to respond to voice commands during critical situations such as accidents, war zones, or natural disasters. It works **entirely offline** for voice recognition using local language models, while still providing real-time location tracking and automated WhatsApp/SMS alerts.
+E-Sentinel is an SOS emergency alert application designed to respond to voice commands during critical situations such as accidents, war zones, or natural disasters. It works **entirely offline** (SOS support) for voice recognition using local language models, while still providing real-time location tracking and automated WhatsApp/SMS alerts.
 
 ---
 
@@ -758,4 +758,4 @@ For contributions or issues — please open a Pull Request or Issue.
 
 ---
 
-**E-Sentinel** — *Emergency response that works offline and in real-time.*
+**E-Sentinel** — *Emergency response that works offline (for SOS alerts) and in real-time.*
