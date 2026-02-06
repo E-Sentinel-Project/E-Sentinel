@@ -20,6 +20,8 @@ import okhttp3.Credentials
 import android.widget.EditText
 import org.json.JSONObject
 import java.io.IOException
+import android.os.Handler
+import android.os.Looper
 import java.text.SimpleDateFormat
 import java.util.Locale
 import java.util.Date
@@ -56,8 +58,8 @@ class MainActivity : AppCompatActivity(), RecognitionListener {
     private lateinit var sensorManager: SensorManager
     private var fallDetected = false
     private var fallThreshold = 25.0f // Adjust based on testing
-
-
+    private val sosHandler = Handler(Looper.getMainLooper())
+    private var sosRunnable: Runnable? = null
 
     private var isSpeechSectionVisible = false
     companion object {
@@ -133,17 +135,17 @@ class MainActivity : AppCompatActivity(), RecognitionListener {
         file.writeText(lines.joinToString("\n"))
     }
 
-//    private val modelMap = mapOf(
-//        "English India (Large)" to "model-large-en-in",
-//        "English India (Small)" to "model-small-en-in",
-//        "English US (Small)" to "model-small-en-us",
-//        "Hindi (Small)" to "model-small-hi",
-//        "Telugu (Small)" to "model-small-te"
-//    )
-
     private val modelMap = mapOf(
-        "English India (Small)" to "model-small-en-in"
+        "English India (Large)" to "model-large-en-in",
+        "English India (Small)" to "model-small-en-in",
+        "English US (Small)" to "model-small-en-us",
+        "Hindi (Small)" to "model-small-hi",
+        "Telugu (Small)" to "model-small-te"
     )
+
+//    private val modelMap = mapOf(
+//        "English India (Small)" to "model-small-en-in"
+//    )
 
     // List of possible distress keywords/phrases
     val distressKeywords = listOf(
@@ -292,6 +294,22 @@ class MainActivity : AppCompatActivity(), RecognitionListener {
         return ((v - min) / (max - min)).coerceIn(0f, 1f)
     }
 
+    private fun startAutoSOSCountdown(latitude: Double, longitude: Double) {
+        sosRunnable = Runnable {
+            sendSOS(latitude, longitude)
+            Toast.makeText(
+                this,
+                "No response detected. SOS sent automatically!",
+                Toast.LENGTH_LONG
+            ).show()
+        }
+        sosHandler.postDelayed(sosRunnable!!, 10_000) // 10 seconds
+    }
+
+    private fun cancelAutoSOSCountdown() {
+        sosRunnable?.let { sosHandler.removeCallbacks(it) }
+    }
+
     private fun showFallDialog(
         timestamp: Long,
         accel: Float,
@@ -303,24 +321,35 @@ class MainActivity : AppCompatActivity(), RecognitionListener {
         val uncertaintyPercent = (I * 100).toInt()
         val notFallPercent = (F * 100).toInt()
 
-        val msg = "Fall Probability: $fallPercent%\n" +
-                "Uncertainty: $uncertaintyPercent%\n" +
-                "Not Fall Probability: $notFallPercent%"
+        val msg = """
+        Fall Probability: $fallPercent%
+        Uncertainty: $uncertaintyPercent%
+        Not Fall Probability: $notFallPercent%
+        
+        SOS will be sent automatically in 10 seconds if no response.
+    """.trimIndent()
 
-        AlertDialog.Builder(this)
-            .setTitle("⚠ Neutrosophic Fall Detected")
-            .setMessage(msg)
-            .setPositiveButton("Send SOS") { _, _ ->
-                updateLastFallResult(true)
-                getLocation { lat, lon -> sendSOS(lat, lon) }
-                fallDetected = false
-            }
-            .setNegativeButton("No, I'm OK") { _, _ ->
-                updateLastFallResult(false)
-                fallDetected = false
-            }
-            .setCancelable(false)
-            .show()
+        getLocation { lat, lon ->
+
+            startAutoSOSCountdown(lat, lon)
+
+            AlertDialog.Builder(this)
+                .setTitle("⚠ Neutrosophic Fall Detected")
+                .setMessage(msg)
+                .setPositiveButton("Send SOS") { _, _ ->
+                    cancelAutoSOSCountdown()
+                    updateLastFallResult(true)
+                    sendSOS(lat, lon)
+                    fallDetected = false
+                }
+                .setNegativeButton("I'm OK") { _, _ ->
+                    cancelAutoSOSCountdown()
+                    updateLastFallResult(false)
+                    fallDetected = false
+                }
+                .setCancelable(false)
+                .show()
+        }
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -474,9 +503,6 @@ class MainActivity : AppCompatActivity(), RecognitionListener {
         } else {
             statusView.text = getString(R.string.waiting_permission)
         }
-
-
-
 
         val sensorListener = object : SensorEventListener {
             override fun onSensorChanged(event: SensorEvent?) {
@@ -922,11 +948,19 @@ class MainActivity : AppCompatActivity(), RecognitionListener {
 
                     if (distressDetected) {
                         runOnUiThread {
-                            AlertDialog.Builder(this@MainActivity)
-                                .setTitle("Voice-Based SOS Detected")
-                                .setMessage("You said something that sounds like a distress call. Should I send an SOS alert?")
-                                .setPositiveButton("Yes, Send SOS") { _, _ ->
-                                    getLocation { lat, lon ->
+
+                            getLocation { lat, lon ->
+                                startAutoSOSCountdown(lat, lon)
+
+                                AlertDialog.Builder(this@MainActivity)
+                                    .setTitle("Voice-Based SOS Detected")
+                                    .setMessage(
+                                        "You said something that sounds like a distress call.\n\n" +
+                                                "SOS will be sent automatically in 10 seconds if no response."
+                                    )
+                                    .setPositiveButton("Yes, Send SOS") { _, _ ->
+                                        cancelAutoSOSCountdown()
+
                                         sendSOS(lat, lon)
                                         Toast.makeText(
                                             this@MainActivity,
@@ -934,12 +968,14 @@ class MainActivity : AppCompatActivity(), RecognitionListener {
                                             Toast.LENGTH_LONG
                                         ).show()
                                     }
-                                }
-                                .setNegativeButton("No, I'm Fine") { _, _ ->
-                                    fallDetected = false
-                                }
-                                .setCancelable(false)
-                                .show()
+                                    .setNegativeButton("No, I'm Fine") { _, _ ->
+                                        cancelAutoSOSCountdown()
+
+                                        fallDetected = false
+                                    }
+                                    .setCancelable(false)
+                                    .show()
+                            }
                         }
                     }
                 }
@@ -949,6 +985,7 @@ class MainActivity : AppCompatActivity(), RecognitionListener {
             }
         }
     }
+
 
     override fun onFinalResult(hypothesis: String) {
         runOnUiThread {
