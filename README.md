@@ -21,6 +21,7 @@ E-Sentinel is an SOS emergency alert application designed to respond to voice co
     - [Location-Based News Aggregation](#location-based-news-aggregation)
     - [Local Weather Monitoring](#local-weather-monitoring)
     - [Offline SOS](#offline-sos)
+    - [Automatic SOS](#auto-sos)
 - [Tech Stack](#tech-stack)
 - [Pending Works](#pending-works)
 - [Contributors](#contributors)
@@ -732,7 +733,30 @@ private fun openSmsAppWithMessage(latitude: Double, longitude: Double) {
 }
 ```
 
----
+<a id="auto-sos"></a>
+## Automatic-SOS Messages
+
+For both the neutrosophic fall detection and keyword-based SOS modules, an automatic SOS triggering mechanism is implemented. Once an SOS is initiated, the system waits for 10 seconds for user confirmation. If no response is received within this interval, the SOS alert is automatically dispatched. This design is especially critical in emergency scenarios where the user may be incapacitated, unconscious, or severely injured and therefore unable to manually confirm or cancel the alert. The automatic triggering ensures timely assistance without relying on user intervention.
+
+```kotlin
+private fun startAutoSOSCountdown(latitude: Double, longitude: Double) {
+    sosRunnable = Runnable {
+        sendSOS(latitude, longitude)
+        Toast.makeText(
+            this,
+            "No response detected. SOS sent automatically!",
+            Toast.LENGTH_LONG
+        ).show()
+    }
+    sosHandler.postDelayed(sosRunnable!!, 10_000) // 10 seconds
+}
+
+private fun cancelAutoSOSCountdown() {
+    sosRunnable?.let { sosHandler.removeCallbacks(it) }
+}
+
+```
+
 <a id="tech-stack"></a>
 ## Tech Stack
 
