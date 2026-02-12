@@ -358,20 +358,6 @@ class MainActivity : AppCompatActivity(), RecognitionListener {
 
         AppCompatDelegate.setDefaultNightMode(AppCompatDelegate.MODE_NIGHT_NO)
 
-        // ---- Battery estimation logging ----
-        val batteryReport = BatteryEstimator.getReport()
-        android.util.Log.d("BatteryEstimator", batteryReport)
-
-        // -------- Battery estimation (one-time info toast) --------
-        Toast.makeText(
-            this,
-            "Estimated Battery Drain: ${
-                "%.2f".format(BatteryEstimator.computeBatteryDrainPerHourMah())
-            } mAh/hour",
-            Toast.LENGTH_LONG
-        ).show()
-
-
 //        textView = findViewById(R.id.textView)
 //        textView.text = "Choose an option below"
 //        / Initialize labels
