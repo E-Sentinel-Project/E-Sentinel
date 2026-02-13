@@ -1,0 +1,63 @@
+                    0 (19) RESET:TIME: 2026-02-03-19-38-33
+                    0 (1) 037 status=charging health=good plug=usb temp=301 volt=3862 current=0 -wifi_ap -otg -high_speaker_volume -sub_screen -sub_screen_doze txshare_event=0x0 online=4 current_event=0x1 misc_event=0x0 charge=1054 modemRailChargemAh=0 wifiRailChargemAh=0 +running +wake_lock +sensor +audio +screen +plugged phone_signal_strength=good +power_save +wifi +usb_data wifi_signal_strength=3 wifi_suppl=completed +ble_scan +cellular_high_tx_power
+            +20s090ms (2) 037 +top=u0a524:"com.example.e_sentinel"
+          +5m30s653ms (2) 038 charge=1083
+          +6m56s290ms (2) 038 volt=3886
+          +7m20s787ms (2) 038 -top=u0a524:"com.example.e_sentinel"
+          +7m27s066ms (2) 038 +top=u0a524:"com.example.e_sentinel"
+          +7m27s788ms (2) 038 -top=u0a524:"com.example.e_sentinel"
+          +7m41s775ms (2) 038 +top=u0a524:"com.example.e_sentinel"
+          +7m46s397ms (2) 038 -top=u0a524:"com.example.e_sentinel"
+          +7m57s267ms (2) 038 +top=u0a524:"com.example.e_sentinel"
+          +8m31s251ms (2) 038 temp=311 volt=3829
+         +10m36s357ms (2) 038 volt=3884
+         +15m23s159ms (2) 039 charge=1111
+         +20m23s195ms (2) 039 stats=0:"battery-level"
+         +23m28s157ms (2) 040 charge=1140
+         +28m28s185ms (3) 040 stats=0:"battery-level"
+         +31m07s152ms (2) 041 charge=1168
+         +33m26s725ms (2) 041 volt=3906
+         +35m01s153ms (2) 041 volt=3876
+         +35m36s757ms (2) 041 volt=3908
+         +38m41s151ms (2) 042 charge=1197
+         +43m41s184ms (2) 042 stats=0:"battery-level"
+         +46m00s155ms (2) 043 charge=1225
+         +51m00s185ms (2) 043 stats=0:"battery-level"
+         +53m07s153ms (2) 044 charge=1254
+         +56m47s159ms (2) 044 volt=3932
+         +58m07s185ms (2) 044 stats=0:"battery-level"
+       +1h00m10s654ms (2) 045 charge=1282
+       +1h03m49s418ms (2) 045 -top=u0a524:"com.example.e_sentinel"
+       +1h03m54s750ms (2) 045 +top=u0a524:"com.example.e_sentinel"
+       +1h06m47s155ms (2) 046 charge=1311
+       +1h11m47s185ms (2) 046 stats=0:"battery-level"
+       +1h13m49s659ms (2) 047 charge=1339
+       +1h18m49s695ms (2) 047 stats=0:"battery-level"
+       +1h20m38s660ms (2) 048 charge=1368
+       +1h23m30s039ms (2) 048 -top=u0a524:"com.example.e_sentinel"
+       +1h28m37s606ms (2) 048 temp=315 volt=3904
+       +1h30m32s630ms (2) 048 volt=3927
+       +1h31m19s794ms (2) 049 charge=1396
+       +1h33m07s829ms (2) 049 volt=3884
+       +1h38m57s159ms (2) 049 temp=329 volt=3914
+       +1h47m48s650ms (2) 050 charge=1425
+       +1h52m48s675ms (2) 050 stats=0:"battery-level"
+       +1h53m09s027ms (6) 050 status=discharging plug=none temp=337 volt=3901 txshare_event=0x0 online=1 current_event=0x0 misc_event=0x0 -plugged -charging +cellular_high_tx_power
+       +1h53m09s035ms (2) 050 volt=3856 -cellular_high_tx_power
+       +1h53m09s035ms (2) 050 volt=3821
+       +1h53m47s994ms (2) 050 volt=3786
+       +1h58m06s157ms (2) 049 charge=1396
+       +1h59m28s249ms (2) 049 volt=3807
+       +2h03m04s778ms (2) 049 +top=u0a524:"com.example.e_sentinel"
+       +2h03m05s972ms (2) 049 -top=u0a524:"com.example.e_sentinel"
+       +2h09m11s158ms (2) 048 volt=3828 charge=1368
+       +2h12m23s097ms (6) 048 status=charging plug=usb temp=318 volt=3823 txshare_event=0x0 online=4 current_event=0x41 misc_event=0x0 +plugged
+       +2h13m52s550ms (2) 048 +top=u0a524:"com.example.e_sentinel"
+       +2h13m54s053ms (2) 048 -top=u0a524:"com.example.e_sentinel"
+       +2h13m56s179ms (2) 048 +top=u0a524:"com.example.e_sentinel"
+       +2h13m59s739ms (6) 048 status=discharging plug=none volt=3812 txshare_event=0x0 online=1 current_event=0x0 misc_event=0x0 -plugged
+       +2h14m02s817ms (6) 048 status=charging plug=usb volt=3806 txshare_event=0x0 online=4 current_event=0x41 misc_event=0x0 +plugged
+       +2h14m02s829ms (2) 048 volt=3768
+       +2h14m04s169ms (2) 048 -top=u0a524:"com.example.e_sentinel"
+       +2h14m05s202ms (2) 048 +top=u0a524:"com.example.e_sentinel"
+    Proc com.example.e_sentinel:
