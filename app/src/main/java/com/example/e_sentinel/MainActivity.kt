@@ -58,6 +58,7 @@ class MainActivity : AppCompatActivity(), RecognitionListener {
     private lateinit var sensorManager: SensorManager
     private var fallDetected = false
     private var fallThreshold = 25.0f // Adjust based on testing
+    private var lastLogTime = 0L
     private val sosHandler = Handler(Looper.getMainLooper())
     private var sosRunnable: Runnable? = null
 
@@ -83,12 +84,22 @@ class MainActivity : AppCompatActivity(), RecognitionListener {
 
     // -------------------- FALL DATASET LOGGER --------------------
     private val FALL_DATA_FILE = "fall_dataset_clean.csv"
+    private val FALL_STREAM_FILE = "fall_stream_log.csv"
 
     private fun initFallDatasetFile() {
         val file = File(filesDir, FALL_DATA_FILE)
         if (!file.exists()) {
             openFileOutput(FALL_DATA_FILE, MODE_PRIVATE).use { fos ->
                 fos.write("timestamp,accel,T,I,F,predicted_fall,actual_fall\n".toByteArray())
+            }
+        }
+    }
+
+    private fun initFallStreamFile() {
+        val file = File(filesDir, FALL_STREAM_FILE)
+        if (!file.exists()) {
+            openFileOutput(FALL_STREAM_FILE, MODE_PRIVATE).use { fos ->
+                fos.write("timestamp,accel,T,I,F,predicted_fall\n".toByteArray())
             }
         }
     }
@@ -133,6 +144,26 @@ class MainActivity : AppCompatActivity(), RecognitionListener {
         lines[lines.lastIndex] = updated
 
         file.writeText(lines.joinToString("\n"))
+    }
+
+    private fun logStream(
+        timestamp: Long,
+        accel: Float,
+        T: Float,
+        I: Float,
+        F: Float,
+        predicted: Boolean
+    ) {
+        val readable = SimpleDateFormat(
+            "dd-MM-yyyy HH:mm:ss",
+            Locale.ENGLISH
+        ).format(Date(timestamp))
+
+        val line = "$readable,$accel,$T,$I,$F,$predicted\n"
+
+        openFileOutput(FALL_STREAM_FILE, MODE_APPEND).use { fos ->
+            fos.write(line.toByteArray())
+        }
     }
 
     private val modelMap = mapOf(
@@ -294,7 +325,7 @@ class MainActivity : AppCompatActivity(), RecognitionListener {
         return ((v - min) / (max - min)).coerceIn(0f, 1f)
     }
 
-    private fun startAutoSOSCountdown(latitude: Double, longitude: Double) {
+    private fun startAutoSOSCountdown(latitude: Double?, longitude: Double?) {
         sosRunnable = Runnable {
             sendSOS(latitude, longitude)
             Toast.makeText(
@@ -510,17 +541,19 @@ class MainActivity : AppCompatActivity(), RecognitionListener {
 //                    val timestamp = System.currentTimeMillis()
 //                    appendFallSample(timestamp, acceleration, T, I, F, fallDetected)
                     val predictedFall = (!fallDetected && (T - F > I) && T > 0.6f)
+                    val timestamp = System.currentTimeMillis()
 
                     if (predictedFall) {
 
                         fallDetected = true
-                        val timestamp = System.currentTimeMillis()
 
-                        // Log predicted fall (unknown result for now)
                         logPredictedFall(timestamp, result.rawAccel, T, I, F)
 
-                        // Ask user to confirm
                         showFallDialog(timestamp, result.rawAccel, T, I, F)
+                    }
+                    if (timestamp - lastLogTime > 500) {
+                        lastLogTime = timestamp
+                        logStream(timestamp, result.rawAccel, T, I, F, predictedFall)
                     }
                 }
             }
@@ -529,7 +562,6 @@ class MainActivity : AppCompatActivity(), RecognitionListener {
         }
 
         sensorManager.registerListener(sensorListener, accelerometer, SensorManager.SENSOR_DELAY_NORMAL)
-
         val btnSOS: Button = findViewById(R.id.btnSOS)
         btnSOS.setOnClickListener {
             val options = arrayOf("Send via SMS (Twilio)", "Send via WhatsApp (Twilio)")
@@ -641,7 +673,6 @@ class MainActivity : AppCompatActivity(), RecognitionListener {
         }
 
         // Roads Button -> Shortest Path via Directions API
-        // Roads Button -> Optimal Route with traffic
         // Roads Button -> Optimal Route with traffic
         val btnRoads: Button = findViewById(R.id.btnRoads)
         btnRoads.setOnClickListener {
@@ -788,10 +819,13 @@ class MainActivity : AppCompatActivity(), RecognitionListener {
         val btnWeather: Button = findViewById(R.id.btnWeather)
         btnWeather.setOnClickListener {
             getLocation { lat, lon ->
-                fetchLocalWeather(lat, lon)
+                if (lat != null && lon != null) {
+                    fetchLocalWeather(lat, lon)
+                } else {
+                    Toast.makeText(this, "Location unavailable.", Toast.LENGTH_SHORT).show()
+                }
             }
         }
-
 
         // Gemini Button -> Open Gemini
         val btnGemini: Button = findViewById(R.id.btnGemini)
@@ -1007,7 +1041,7 @@ class MainActivity : AppCompatActivity(), RecognitionListener {
         speechService?.let { it.stop(); it.shutdown() }
     }
 
-    private fun getLocation(callback: (Double, Double) -> Unit) {
+    private fun getLocation(callback: (Double?, Double?) -> Unit) {
         if (ActivityCompat.checkSelfPermission(
                 this,
                 Manifest.permission.ACCESS_FINE_LOCATION
@@ -1022,14 +1056,20 @@ class MainActivity : AppCompatActivity(), RecognitionListener {
                 arrayOf(Manifest.permission.ACCESS_FINE_LOCATION),
                 1001
             )
+
+            Toast.makeText(this, "Location not found", Toast.LENGTH_SHORT).show()
+            callback(null, null)
             return
         }
 
         fusedLocationClient.lastLocation
             .addOnSuccessListener { location: Location? ->
-                location?.let {
-                    callback(it.latitude, it.longitude)
-                } ?: Toast.makeText(this, "Location not available", Toast.LENGTH_SHORT).show()
+                if (location != null) {
+                    callback(location.latitude, location.longitude)
+                } else {
+                    Toast.makeText(this, "Location not found", Toast.LENGTH_SHORT).show()
+                    callback(null, null)
+                }
             }
     }
 
@@ -1040,12 +1080,16 @@ class MainActivity : AppCompatActivity(), RecognitionListener {
         return capabilities.hasCapability(android.net.NetworkCapabilities.NET_CAPABILITY_INTERNET)
     }
 
-    private fun openSmsAppWithMessage(latitude: Double, longitude: Double) {
+    private fun openSmsAppWithMessage(latitude: Double?, longitude: Double?) {
         val phoneNumber = BuildConfig.ALERT_PHONE_NUMBER
         val message =
             "SOS ALERT!\n" +
                     "Immediate help needed.\n" +
-                    "Location: https://maps.google.com/?q=$latitude,$longitude"
+                    if (latitude != null && longitude != null) {
+                        "Location: https://maps.google.com/?q=$latitude,$longitude"
+                    } else {
+                        "Location unavailable."
+                    }
 
         val intent = Intent(Intent.ACTION_SENDTO).apply {
             data = Uri.parse("smsto:$phoneNumber")
@@ -1059,7 +1103,7 @@ class MainActivity : AppCompatActivity(), RecognitionListener {
         }
     }
 
-    private fun sendSOS(latitude: Double, longitude: Double) {
+    private fun sendSOS(latitude: Double?, longitude: Double?) {
         if (!isInternetAvailable()) {
             openSmsAppWithMessage(latitude, longitude)
             Toast.makeText(
@@ -1075,7 +1119,11 @@ class MainActivity : AppCompatActivity(), RecognitionListener {
                 val auth = BuildConfig.TWILIO_AUTH_TOKEN
                 val fromPhone = BuildConfig.TWILIO_SMS_NUMBER
                 val toPhone = BuildConfig.ALERT_PHONE_NUMBER
-                val message = "🚨 SOS Alert! Location: https://maps.google.com/?q=$latitude,$longitude"
+                val message = if (latitude != null && longitude != null) {
+                    "🚨 SOS Alert! Location: https://maps.google.com/?q=$latitude,$longitude"
+                } else {
+                    "🚨 SOS Alert! Location unavailable."
+                }
 
                 val formBody = FormBody.Builder()
                     .add("From", fromPhone)
