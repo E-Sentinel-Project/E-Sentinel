@@ -712,6 +712,8 @@ seamlessly switches to the Android native SMS interface, where a pre-filled emer
 for the designated contact, requiring only a single user action to send. This dual-mode design minimizes alert latency and enhances 
 system reliability, which is particularly critical in time-sensitive emergency scenarios where even minor delays can significantly affect outcomes.
 
+From a security and societal perspective, preventing in-app offline APK redistribution reduces the risk of malware propagation and unauthorized software cloning. Android's security model enforces this by disallowing runtime rebuilding or re-signing of APKs, which are compile-time operations. This sandboxing mechanism blocks self-modifying or self-replicating applications, ensuring that emergency applications like E-Sentinel cannot be misused as malware carriers. As a result, offline APK transfer is limited to trusted pre-built distribution channels, such as desktop-to-device sharing or APK extractor tools that copy already signed applications without modification.
+
 ```kotlin
 private fun openSmsAppWithMessage(latitude: Double, longitude: Double) {
     val phoneNumber = BuildConfig.ALERT_PHONE_NUMBER
