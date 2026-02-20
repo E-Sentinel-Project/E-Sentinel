@@ -167,7 +167,7 @@ logs and validate by the colab notebook (fall_testing.ipynb).
 
 Our code generates 2 internal files which can be accessed through Android Studio:
 
-1. data/data/com.example.e_sentinel/files/falls_dataset_clean.csv (where system 
+1. data/data/com.example.e_sentinel/files/falls_dataset_clean.csv (when system 
 predicts fall)
 
 From this file tester can compute:
@@ -180,7 +180,7 @@ From this file tester can compute:
 and
 
 2. data/data/com.example.e_sentinel/files/fall_stream_log.csv (displays all logs->Used to test
-when system detects no fall)
+when system does not predict fall)
 
 From this file tester can compute:
 
@@ -188,6 +188,7 @@ From this file tester can compute:
 |--------------------------------------|------------------------------|------------------|
 | System = FALSE, ActualFall = TRUE   | Fall occurred but no alert   | FN               |
 | System = FALSE, ActualFall = FALSE  | No fall and no alert         | TN               |
+
 
 Copy paste log values from these files to an empty CSV file to create dataset.
 
@@ -197,6 +198,8 @@ and ActualFall (True/False).
 To evaluate metrics and generate confusion matrix, tester can upload their own 
 generated dataset to our colab notebook and obtain the results as per their 
 dataset.
+
+---
 
 <a id="sample-code-snippets-analysis"></a>
 # Sample Code Snippets Analysis
