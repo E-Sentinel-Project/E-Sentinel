@@ -10,6 +10,7 @@ E-Sentinel is an SOS emergency alert application designed to respond to voice co
 - [Key Features](#key-features)
 - [Setup & Installation](#setup--installation)
 - [How It Works](#how-it-works)
+- [Collection Protocol](#collection-protocol)
 - [Sample Code Snippets Analysis](#sample-code-snippets-analysis)
     - [Neutrosophic Fall Detection](#neutrosophic-fall-detection)
     - [Motion Feature Extraction](#motion-feature-extraction)
@@ -157,6 +158,45 @@ These voice models run **entirely offline on the device**, ensuring reliable eme
     * Local news and weather data
 
 ---
+
+<a id="collection-protocol"></a>
+# Collection Protocol 
+
+The dataset (fall_testing.csv) is fully reproducible, anyone can generate their own dataset through 
+logs and validate by the colab notebook (fall_testing.ipynb).
+
+Our code generates 2 internal files which can be accessed through Android Studio:
+
+1. data/data/com.example.e_sentinel/files/falls_dataset_clean.csv (where system 
+predicts fall)
+
+From this file tester can compute:
+
+| Case                                 | Condition              | Confusion Matrix |
+|--------------------------------------|------------------------|------------------|
+| System = TRUE, ActualFall = TRUE    | User confirms fall     | TP               |
+| System = TRUE, ActualFall = FALSE   | User dismisses alert   | FP               |
+
+and
+
+2. data/data/com.example.e_sentinel/files/fall_stream_log.csv (displays all logs->Used to test
+when system detects no fall)
+
+From this file tester can compute:
+
+| Case                                 | Condition                    | Confusion Matrix |
+|--------------------------------------|------------------------------|------------------|
+| System = FALSE, ActualFall = TRUE   | Fall occurred but no alert   | FN               |
+| System = FALSE, ActualFall = FALSE  | No fall and no alert         | TN               |
+
+Copy paste log values from these files to an empty CSV file to create dataset.
+
+The tester fills Activity (fall, run, jump, fast walk, lying down intentionally, etc.) 
+and ActualFall (True/False).
+
+To evaluate metrics and generate confusion matrix, tester can upload their own 
+generated dataset to our colab notebook and obtain the results as per their 
+dataset.
 
 <a id="sample-code-snippets-analysis"></a>
 # Sample Code Snippets Analysis
