@@ -261,70 +261,33 @@ Formally, a fall is triggered when:
 ### Core Detection Logic
 
 ```kotlin
-private fun detectFallNeutrosophic(event: SensorEvent): NeutroDebug {
+private fun detectFallNeutrosophic(
+    filteredAccel: Float,
+    jerk: Float,
+    angle: Float
+): Boolean {
 
-        val x = event.values[0]
-        val y = event.values[1]
-        val z = event.values[2]
+    // Truth (T): evidence supporting a fall
+    val T = (
+            normalize(filteredAccel, 15f, 30f) * 0.55f +
+                    normalize(jerk, 10f, 35f) * 0.30f +
+                    normalize(angle, 35f, 85f) * 0.15f
+            ).coerceIn(0f, 1f)
 
-        val rawAccel = Math.sqrt((x*x + y*y + z*z).toDouble()).toFloat()
+    // Indeterminacy (I): uncertainty from ambiguous motion
+    val I = (
+            normalize(jerk, 3f, 12f) * 0.4f +
+                    normalize(angle, 10f, 35f) * 0.6f
+            ).coerceIn(0f, 0.3f)
 
-        val filteredAccel = kFilter.update(rawAccel)
+    // Falsity (F): strong evidence of non-fall activity
+    val F = (
+            normalizeStableGravity(filteredAccel) * 0.6f +
+                    normalizeSmallJerk(jerk) * 0.4f
+            ).coerceIn(0.1f, 1f)
 
-        val timestamp = event.timestamp
-        val dt = if (lastTs == 0L) 0.0 else (timestamp - lastTs) / 1_000_000_000.0
-
-        val jerk = if (dt > 0) {
-            val diff = Math.sqrt(
-                ((x - lastAcc[0])*(x - lastAcc[0]) +
-                        (y - lastAcc[1])*(y - lastAcc[1]) +
-                        (z - lastAcc[2])*(z - lastAcc[2])).toDouble()
-            ).toFloat()
-            diff / dt.toFloat()
-        } else 0f
-
-        lastTs = timestamp
-        lastAcc[0] = x; lastAcc[1] = y; lastAcc[2] = z
-
-
-        val angle = Math.toDegrees(
-            Math.acos((z / filteredAccel).coerceIn(-1f, 1f).toDouble())
-        ).toFloat()
-
-
-        val T = (
-                normalize(filteredAccel, 15f, 30f) * 0.55f +
-                        normalize(jerk, 10f, 35f) * 0.30f +
-                        normalize(angle, 35f, 85f) * 0.15f
-                ).coerceIn(0f, 1f)
-
-
-
-// Indeterminacy (I): uncertainty from shaky or weird movement
-        val I = (
-                normalize(jerk, 3f, 12f) * 0.4f +
-                        normalize(angle, 10f, 35f) * 0.6f
-                ).coerceIn(0f, 0.3f)   // ← LIMIT MAX UNCERTAINTY TO 30%
-
-
-
-// Falsity (F): strong signal of not falling
-        val F = (
-                normalizeStableGravity(filteredAccel) * 0.6f +
-                        normalizeSmallJerk(jerk) * 0.4f
-                ).coerceIn(0.1f, 1f)   // ← ALWAYS ≥10%
-
-
-        return NeutroDebug(
-            T = T,
-            I = I,
-            F = F,
-            rawAccel = rawAccel,
-            filteredAccel = filteredAccel,
-            jerk = jerk,
-            angle = angle
-        )
-    }
+    // Fall-suspected decision
+    return (!fallDetected && (T - F > I) && T > 0.6f)
 ```
 
 ---
@@ -346,33 +309,40 @@ This module is designed for **real-time execution** with minimal computational o
 private var lastAcc = FloatArray(3) { 0f }
 private var lastTs = 0L
 private val kFilter = Kalman1D()
+private fun extractMotionFeatures(event: SensorEvent): FloatArray {
+    val x = event.values[0]
+    val y = event.values[1]
+    val z = event.values[2]
 
-val x = event.values[0]
-val y = event.values[1]
-val z = event.values[2]
-
-val rawAccel = Math.sqrt((x*x + y*y + z*z).toDouble()).toFloat()
-
-val filteredAccel = kFilter.update(rawAccel)
-
-val timestamp = event.timestamp
-val dt = if (lastTs == 0L) 0.0 else (timestamp - lastTs) / 1_000_000_000.0
-
-val jerk = if (dt > 0) {
-    val diff = Math.sqrt(
-        ((x - lastAcc[0])*(x - lastAcc[0]) +
-                (y - lastAcc[1])*(y - lastAcc[1]) +
-                (z - lastAcc[2])*(z - lastAcc[2])).toDouble()
+    val rawAccel = Math.sqrt( // Raw acceleration magnitude
+        (x * x + y * y + z * z).toDouble()
     ).toFloat()
-    diff / dt.toFloat()
-} else 0f
+    // Kalman-filtered acceleration
+    val filteredAccel = kFilter.update(rawAccel)
 
-lastTs = timestamp
-lastAcc[0] = x; lastAcc[1] = y; lastAcc[2] = z
+    val timestamp = event.timestamp // Time difference
+    val dt = if (lastTs == 0L) 0.0 else
+        (timestamp - lastTs) / 1_000_000_000.0
+    // Jerk computation
+    val jerk = if (dt > 0) {
+        val diff = Math.sqrt(
+            ((x - lastAcc[0]) * (x - lastAcc[0]) +
+                    (y - lastAcc[1]) * (y - lastAcc[1]) +
+                    (z - lastAcc[2]) * (z - lastAcc[2])).toDouble()
+        ).toFloat()
+        diff / dt.toFloat()
+    } else 0f
 
-val angle = Math.toDegrees(
-    Math.acos((z / filteredAccel).coerceIn(-1f, 1f).toDouble())
-).toFloat()
+    val angle = Math.toDegrees( // Orientation angle
+        Math.acos((z / filteredAccel).coerceIn(-1f, 1f).toDouble())
+    ).toFloat()
+
+    // Update state
+    lastTs = timestamp
+    lastAcc[0] = x; lastAcc[1] = y; lastAcc[2] = z
+
+    return floatArrayOf(filteredAccel, jerk, angle)
+}
 ```
 
 ---
@@ -392,24 +362,12 @@ The system includes an **offline, speech-driven SOS mechanism** using on-device 
 
 ```kotlin
 val distressKeywords = listOf(
-        "help",
-        "help me",
-        "save me",
-        "emergency",
-        "please help",
-        "i need help",
-        "i'm in danger",
-        "i am in danger",
-        "call the police",
-        "sos",
-        "attack",
-        "kidnap",
-        "rape",
-        "fire",
-        "someone is following me",
-        "danger",
-        "please rescue me"
-    )
+    "help", "help me", "save me", "emergency", "please help",
+    "i need help", "i'm in danger", "i am in danger",
+    "call the police", "sos", "attack", "kidnap",
+    "rape", "fire", "someone is following me",
+    "danger", "please rescue me"
+)
 ```
 
 ### Speech Recognition Callback
