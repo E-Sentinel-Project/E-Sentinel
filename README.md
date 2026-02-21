@@ -252,6 +252,10 @@ These thresholds were derived empirically through pilot testing on fall and non-
 
 A fall is suspected only when **Truth significantly exceeds both Indeterminacy and Falsity**, reducing false alarms.
 
+Formally, a fall is triggered when:
+
+(T − F > I) AND (T > 0.6)
+
 ### Core Detection Logic
 
 ```kotlin
@@ -294,6 +298,8 @@ Raw accelerometer data is transformed into **compact motion descriptors** using 
 * **Kalman-filtered acceleration magnitude**
 * **Jerk (finite difference with timestamps)**
 * **Orientation angle from gravity vector**
+
+The inverse cosine output is converted from radians to degrees before normalization.
 
 This module is designed for **real-time execution** with minimal computational overhead.
 
