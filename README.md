@@ -61,6 +61,8 @@ E-Sentinel is an SOS emergency alert application designed to respond to voice co
 
 # Setup & Installation
 
+The repository includes a minimal working example demonstrating installation and SOS activation.
+
 ### 1. Clone the Repository
 
 ```bash
@@ -259,34 +261,70 @@ Formally, a fall is triggered when:
 ### Core Detection Logic
 
 ```kotlin
-private fun detectFallNeutrosophic(
-    filteredAccel: Float,
-    jerk: Float,
-    angle: Float
-): Boolean {
+private fun detectFallNeutrosophic(event: SensorEvent): NeutroDebug {
 
-    // Truth (T): evidence supporting a fall
-    val T = (
-            normalize(filteredAccel, 15f, 30f) * 0.55f +
-                    normalize(jerk, 10f, 35f) * 0.30f +
-                    normalize(angle, 35f, 85f) * 0.15f
-            ).coerceIn(0f, 1f)
+        val x = event.values[0]
+        val y = event.values[1]
+        val z = event.values[2]
 
-    // Indeterminacy (I): uncertainty from ambiguous motion
-    val I = (
-            normalize(jerk, 3f, 12f) * 0.4f +
-                    normalize(angle, 10f, 35f) * 0.6f
-            ).coerceIn(0f, 0.3f)
+        val rawAccel = Math.sqrt((x*x + y*y + z*z).toDouble()).toFloat()
 
-    // Falsity (F): strong evidence of non-fall activity
-    val F = (
-            normalizeStableGravity(filteredAccel) * 0.6f +
-                    normalizeSmallJerk(jerk) * 0.4f
-            ).coerceIn(0.1f, 1f)
+        val filteredAccel = kFilter.update(rawAccel)
 
-    // Fall-suspected decision
-    return (!fallDetected && (T - F > I) && T > 0.6f)
-}
+        val timestamp = event.timestamp
+        val dt = if (lastTs == 0L) 0.0 else (timestamp - lastTs) / 1_000_000_000.0
+
+        val jerk = if (dt > 0) {
+            val diff = Math.sqrt(
+                ((x - lastAcc[0])*(x - lastAcc[0]) +
+                        (y - lastAcc[1])*(y - lastAcc[1]) +
+                        (z - lastAcc[2])*(z - lastAcc[2])).toDouble()
+            ).toFloat()
+            diff / dt.toFloat()
+        } else 0f
+
+        lastTs = timestamp
+        lastAcc[0] = x; lastAcc[1] = y; lastAcc[2] = z
+
+
+        val angle = Math.toDegrees(
+            Math.acos((z / filteredAccel).coerceIn(-1f, 1f).toDouble())
+        ).toFloat()
+
+
+        val T = (
+                normalize(filteredAccel, 15f, 30f) * 0.55f +
+                        normalize(jerk, 10f, 35f) * 0.30f +
+                        normalize(angle, 35f, 85f) * 0.15f
+                ).coerceIn(0f, 1f)
+
+
+
+// Indeterminacy (I): uncertainty from shaky or weird movement
+        val I = (
+                normalize(jerk, 3f, 12f) * 0.4f +
+                        normalize(angle, 10f, 35f) * 0.6f
+                ).coerceIn(0f, 0.3f)   // ← LIMIT MAX UNCERTAINTY TO 30%
+
+
+
+// Falsity (F): strong signal of not falling
+        val F = (
+                normalizeStableGravity(filteredAccel) * 0.6f +
+                        normalizeSmallJerk(jerk) * 0.4f
+                ).coerceIn(0.1f, 1f)   // ← ALWAYS ≥10%
+
+
+        return NeutroDebug(
+            T = T,
+            I = I,
+            F = F,
+            rawAccel = rawAccel,
+            filteredAccel = filteredAccel,
+            jerk = jerk,
+            angle = angle
+        )
+    }
 ```
 
 ---
@@ -308,40 +346,33 @@ This module is designed for **real-time execution** with minimal computational o
 private var lastAcc = FloatArray(3) { 0f }
 private var lastTs = 0L
 private val kFilter = Kalman1D()
-private fun extractMotionFeatures(event: SensorEvent): FloatArray {
-    val x = event.values[0]
-    val y = event.values[1]
-    val z = event.values[2]
 
-    val rawAccel = Math.sqrt( // Raw acceleration magnitude
-        (x * x + y * y + z * z).toDouble()
+val x = event.values[0]
+val y = event.values[1]
+val z = event.values[2]
+
+val rawAccel = Math.sqrt((x*x + y*y + z*z).toDouble()).toFloat()
+
+val filteredAccel = kFilter.update(rawAccel)
+
+val timestamp = event.timestamp
+val dt = if (lastTs == 0L) 0.0 else (timestamp - lastTs) / 1_000_000_000.0
+
+val jerk = if (dt > 0) {
+    val diff = Math.sqrt(
+        ((x - lastAcc[0])*(x - lastAcc[0]) +
+                (y - lastAcc[1])*(y - lastAcc[1]) +
+                (z - lastAcc[2])*(z - lastAcc[2])).toDouble()
     ).toFloat()
-    // Kalman-filtered acceleration
-    val filteredAccel = kFilter.update(rawAccel)
+    diff / dt.toFloat()
+} else 0f
 
-    val timestamp = event.timestamp // Time difference
-    val dt = if (lastTs == 0L) 0.0 else
-        (timestamp - lastTs) / 1_000_000_000.0
-    // Jerk computation
-    val jerk = if (dt > 0) {
-        val diff = Math.sqrt(
-            ((x - lastAcc[0]) * (x - lastAcc[0]) +
-                    (y - lastAcc[1]) * (y - lastAcc[1]) +
-                    (z - lastAcc[2]) * (z - lastAcc[2])).toDouble()
-        ).toFloat()
-        diff / dt.toFloat()
-    } else 0f
+lastTs = timestamp
+lastAcc[0] = x; lastAcc[1] = y; lastAcc[2] = z
 
-    val angle = Math.toDegrees( // Orientation angle
-        Math.acos((z / filteredAccel).coerceIn(-1f, 1f).toDouble())
-    ).toFloat()
-
-    // Update state
-    lastTs = timestamp
-    lastAcc[0] = x; lastAcc[1] = y; lastAcc[2] = z
-
-    return floatArrayOf(filteredAccel, jerk, angle)
-}
+val angle = Math.toDegrees(
+    Math.acos((z / filteredAccel).coerceIn(-1f, 1f).toDouble())
+).toFloat()
 ```
 
 ---
@@ -361,12 +392,24 @@ The system includes an **offline, speech-driven SOS mechanism** using on-device 
 
 ```kotlin
 val distressKeywords = listOf(
-    "help", "help me", "save me", "emergency", "please help",
-    "i need help", "i'm in danger", "i am in danger",
-    "call the police", "sos", "attack", "kidnap",
-    "rape", "fire", "someone is following me",
-    "danger", "please rescue me"
-)
+        "help",
+        "help me",
+        "save me",
+        "emergency",
+        "please help",
+        "i need help",
+        "i'm in danger",
+        "i am in danger",
+        "call the police",
+        "sos",
+        "attack",
+        "kidnap",
+        "rape",
+        "fire",
+        "someone is following me",
+        "danger",
+        "please rescue me"
+    )
 ```
 
 ### Speech Recognition Callback
@@ -374,23 +417,57 @@ val distressKeywords = listOf(
 ```kotlin
 // Vosk Listener Callback
 override fun onResult(hypothesis: String) {
-    Thread{ // run on a separate thread
-        val text = JSONObject(hypothesis).optString("text");
-        if (text.isNotEmpty()) {
-            finalView.text = text; // update ui text-view
-            val spokenText = text.lowercase()
+        runOnUiThread {
+            try {
+                val text = JSONObject(hypothesis).optString("text");
+                if (text.isNotEmpty()) {
 
-            // check for match
-            val distressDetected =
-                distressKeywords.any { keyword ->
-                    spokenText.contains(keyword)
+                    finalView.text = text;
+                    val spokenText = text.lowercase()
+
+                    val distressDetected = distressKeywords.any { keyword ->
+                        spokenText.contains(keyword)
+                    }
+
+                    if (distressDetected) {
+                        runOnUiThread {
+
+                            getLocation { lat, lon ->
+                                startAutoSOSCountdown(lat, lon)
+
+                                AlertDialog.Builder(this@MainActivity)
+                                    .setTitle("Voice-Based SOS Detected")
+                                    .setMessage(
+                                        "You said something that sounds like a distress call.\n\n" +
+                                                "SOS will be sent automatically in 10 seconds if no response."
+                                    )
+                                    .setPositiveButton("Yes, Send SOS") { _, _ ->
+                                        cancelAutoSOSCountdown()
+
+                                        sendSOS(lat, lon)
+                                        Toast.makeText(
+                                            this@MainActivity,
+                                            " SOS Triggered via Voice Command!",
+                                            Toast.LENGTH_LONG
+                                        ).show()
+                                    }
+                                    .setNegativeButton("No, I'm Fine") { _, _ ->
+                                        cancelAutoSOSCountdown()
+
+                                        fallDetected = false
+                                    }
+                                    .setCancelable(false)
+                                    .show()
+                            }
+                        }
+                    }
                 }
 
-            if (distressDetected) {
-                // Show a pop-up for confirmation
+            } catch (e: Exception) {
+                finalView.text = hypothesis;
             }
         }
-    }.start()}
+    }
 ```
 
 ---
@@ -407,7 +484,7 @@ Once an emergency is confirmed, the system sends an SOS alert containing a **Goo
 * Immediate user feedback
 
 ```kotlin
-private fun sendSOS(latitude: Double, longitude: Double) {
+private fun sendSOS(latitude: Double?, longitude: Double?) {
         if (!isInternetAvailable()) {
             openSmsAppWithMessage(latitude, longitude)
             Toast.makeText(
@@ -423,7 +500,11 @@ private fun sendSOS(latitude: Double, longitude: Double) {
                 val auth = BuildConfig.TWILIO_AUTH_TOKEN
                 val fromPhone = BuildConfig.TWILIO_SMS_NUMBER
                 val toPhone = BuildConfig.ALERT_PHONE_NUMBER
-                val message = "🚨 SOS Alert! Location: https://maps.google.com/?q=$latitude,$longitude"
+                val message = if (latitude != null && longitude != null) {
+                    "🚨 SOS Alert! Location: https://maps.google.com/?q=$latitude,$longitude"
+                } else {
+                    "🚨 SOS Alert! Location unavailable."
+                }
 
                 val formBody = FormBody.Builder()
                     .add("From", fromPhone)
@@ -474,7 +555,7 @@ When the SOS is activated, the app fetches the user’s current location and sen
 
 ```kotlin
 private var lastVolumeButtonTime = 0L
-private const val DOUBLE_PRESS_INTERVAL = 600L // milliseconds
+private val DOUBLE_PRESS_INTERVAL = 800 // milliseconds
 ```
 
 | Parameter               | Description                            |
@@ -490,34 +571,19 @@ private const val DOUBLE_PRESS_INTERVAL = 600L // milliseconds
 override fun onKeyDown(keyCode: Int, event: KeyEvent?): Boolean {
     val currentTime = System.currentTimeMillis()
 
-    // Check for volume button press
-    if (keyCode == KeyEvent.KEYCODE_VOLUME_UP ||
-        keyCode == KeyEvent.KEYCODE_VOLUME_DOWN) {
-
-        // Detect double press within the defined interval
+    if (keyCode == KeyEvent.KEYCODE_VOLUME_UP || keyCode == KeyEvent.KEYCODE_VOLUME_DOWN) {
         if (currentTime - lastVolumeButtonTime <= DOUBLE_PRESS_INTERVAL) {
-
-            // Reset timer to avoid repeated triggers
             lastVolumeButtonTime = 0L
 
-            // Fetch current location and send SOS
             getLocation { lat, lon ->
                 sendSOS(lat, lon)
             }
 
-            // User feedback
-            Toast.makeText(
-                this,
-                "SOS Activated by Volume Button!",
-                Toast.LENGTH_SHORT
-            ).show()
-
+            Toast.makeText(this, "SOS Activated by Volume Button!", Toast.LENGTH_SHORT).show()
         } else {
-            // Store timestamp of first press
             lastVolumeButtonTime = currentTime
         }
 
-        // Consume the event so system volume doesn't change
         return true
     }
 
@@ -562,64 +628,82 @@ Returns:
 * Start and end addresses
 
 ```kotlin
-// fetch the button from XML tree
+// Roads Button -> Shortest Path via Directions API
+// Roads Button -> Optimal Route with traffic
 val btnRoads: Button = findViewById(R.id.btnRoads)
 btnRoads.setOnClickListener {
-    // first fetch phone's current location
     getLocation { lat, lon ->
-        Thread{ // run on a separate thread
-            // create a pop-up and ask user for destination
-            val input = EditText(this)
-            val destination = input.text.toString().trim()
-            // close pop-up and fetch optimal route
+        // Ask user for destination
+        val input = EditText(this)
+        AlertDialog.Builder(this)
+            .setTitle("Enter Destination Address")
+            .setView(input)
+            .setPositiveButton("Go") { _, _ ->
+                val destination = input.text.toString().trim()
+                if (destination.isNotEmpty()) {
+                    Thread {
+                        try {
+                            val apiKey = BuildConfig.GOOGLE_MAPS_API_KEY
+                            // Directions API URL with traffic info
+                            val url =
+                                "https://maps.googleapis.com/maps/api/directions/json?" +
+                                        "origin=$lat,$lon&destination=${Uri.encode(destination)}" +
+                                        "&mode=driving&departure_time=now&traffic_model=best_guess&key=$apiKey"
 
-            if (destination.isNotEmpty()) {
-                // load api key and api query link
-                val apiKey = BuildConfig.GOOGLE_MAPS_API_KEY
-                val url =
-                    "https://maps.googleapis.com/maps/api/directions/json?" +
-                            "origin=$lat,$lon&destination=${Uri.encode(destination)}" +
-                            "&mode=driving&departure_time=now&traffic_model=best_guess&key=$apiKey"
+                            val request = Request.Builder().url(url).build()
+                            val response = OkHttpClient().newCall(request).execute()
+                            val json = JSONObject(response.body?.string() ?: "{}")
 
-                // perform the request to the api
-                val request = Request.Builder().url(url).build()
+                            val routes = json.optJSONArray("routes")
+                            if (routes != null && routes.length() > 0) {
+                                val legs = routes.getJSONObject(0).getJSONArray("legs")
+                                val leg = legs.getJSONObject(0)
+                                val distance = leg.getJSONObject("distance").getString("text")
+                                val duration = leg.optJSONObject("duration_in_traffic")?.getString("text")
+                                    ?: leg.getJSONObject("duration").getString("text")
+                                val startAddress = leg.getString("start_address")
+                                val endAddress = leg.getString("end_address")
 
-                // query's response
-                val response = OkHttpClient().newCall(request).execute()
-                val json = JSONObject(response.body?.string() ?: "{}")
-
-                // fetch array of routes
-                val routes = json.optJSONArray("routes")
-
-                // valid route found
-                if (routes != null && routes.length() > 0) {
-                    // A leg is a section of a route between waypoints.
-                    // take the first route and take its first leg
-                    val leg = routes.getJSONObject(0).getJSONArray("legs")
-                        .getJSONObject(0)
-
-                    // fetch the route's distance
-                    val distance = leg.getJSONObject("distance").getString("text")
-
-                    //fetch the duration
-                    val duration = leg.optJSONObject("duration_in_traffic")
-                        ?.getString("text")
-                        ?: leg.getJSONObject("duration")
-                            .getString("text")
-
-
-                    // current location of the user
-                    val startAddress = leg.getString("start_address")
-
-                    // destination
-                    val endAddress = leg.getString("end_address")
-
-                    // create pop-up and display results
-
-                } else { // no route found }
-                } else { // invalid destination } 
-                }.start()}
-        }
+                                runOnUiThread {
+                                    AlertDialog.Builder(this)
+                                        .setTitle("Optimal Route")
+                                        .setMessage(
+                                            "From: $startAddress\n" +
+                                            "To: $endAddress\n" +
+                                            "Distance: $distance\n" +
+                                            "Estimated Time: $duration"
+                                        )
+                                        .setPositiveButton("Open in Maps") { _, _ ->
+                                            val gmmIntentUri =
+                                                Uri.parse(
+                                                    "https://www.google.com/maps/dir/?api=1&origin=$lat,$lon&destination=${Uri.encode(destination)}&travelmode=driving"
+                                                )
+                                            val mapIntent = Intent(Intent.ACTION_VIEW, gmmIntentUri)
+                                            mapIntent.setPackage("com.google.android.apps.maps")
+                                            startActivity(mapIntent)
+                                        }
+                                        .setNegativeButton("Close", null)
+                                        .show()
+                                }
+                            } else {
+                                runOnUiThread {
+                                    Toast.makeText(this, "No route found", Toast.LENGTH_SHORT).show()
+                                }
+                            }
+                        } catch (e: Exception) {
+                            runOnUiThread {
+                                Toast.makeText(this, "Error fetching route", Toast.LENGTH_SHORT).show()
+                            }
+                        }
+                    }.start()
+                } else {
+                    Toast.makeText(this, "Destination cannot be empty", Toast.LENGTH_SHORT).show()
+                }
+            }
+            .setNegativeButton("Cancel", null)
+            .show()
+    }
+}
 ```
 
 ---
@@ -634,72 +718,75 @@ Delivers **geographically relevant news** using:
 Includes background-thread execution.
 
 ```kotlin
-// fetch the button from XML tree
+// News Button -> Local News
 val btnNews: Button = findViewById(R.id.btnNews)
 btnNews.setOnClickListener {
     getLocation { lat, lon ->
-        Thread{ // run on a separate thread
-            // firstly, get nearest city name
-            val geoApiKey = BuildConfig.GOOGLE_MAPS_API_KEY
-            val geoUrl =
-                "https://maps.googleapis.com/maps/api/geocode/json?latlng=$lat,$lon&key=$geoApiKey"
+        // Step 1: Get nearest city name
+        Thread {
+            try {
+                val geoApiKey = BuildConfig.GOOGLE_MAPS_API_KEY
+                val geoUrl = "https://maps.googleapis.com/maps/api/geocode/json?latlng=$lat,$lon&key=$geoApiKey"
 
-            // send a request and get a response
-            val geoRequest = Request.Builder().url(geoUrl).build()
-            val geoResponse = OkHttpClient().newCall(geoRequest).execute()
+                val geoRequest = Request.Builder().url(geoUrl).build()
+                val geoResponse = OkHttpClient().newCall(geoRequest).execute()
+                val geoJson = JSONObject(geoResponse.body?.string() ?: "{}")
+                val results = geoJson.optJSONArray("results")
 
-            // parse the response to obtain results
-            val geoJson = JSONObject(geoResponse.body?.string() ?: "{}")
-            val results = geoJson.optJSONArray("results")
-
-            var cityName: String? = null
-
-            // recover the city name from the response
-            if (results != null && results.length() > 0) {
-                val addressComponents = results.getJSONObject(0)
-                    .getJSONArray("address_components")
-                for (i in 0 until addressComponents.length()) {
-                    val component = addressComponents.getJSONObject(i)
-                    val types = component.getJSONArray("types")
-                    for (j in 0 until types.length()) {
-                        if (types.getString(j) == "locality") {
-                            cityName = component.getString("long_name")
-                            break
+                var cityName: String? = null
+                if (results != null && results.length() > 0) {
+                    val addressComponents = results.getJSONObject(0).getJSONArray("address_components")
+                    for (i in 0 until addressComponents.length()) {
+                        val component = addressComponents.getJSONObject(i)
+                        val types = component.getJSONArray("types")
+                        for (j in 0 until types.length()) {
+                            if (types.getString(j) == "locality") {
+                                cityName = component.getString("long_name")
+                                break
+                            }
                         }
                     }
                 }
+
+                // Step 2: Fetch local news using NewsData API
+                val newsApiKey = BuildConfig.NEWS_API_KEY
+                val newsUrl = "https://newsdata.io/api/1/news?apikey=$newsApiKey&country=in&language=en&q=$cityName"
+
+                val newsRequest = Request.Builder().url(newsUrl).build()
+                val newsResponse = OkHttpClient().newCall(newsRequest).execute()
+                val newsJson = JSONObject(newsResponse.body?.string() ?: "{}")
+                val articles = newsJson.optJSONArray("results")
+
+                runOnUiThread {
+                    if (articles != null && articles.length() > 0) {
+                        val firstArticle = articles.getJSONObject(0)
+                        val title = firstArticle.optString("title", "No Title")
+                        val description = firstArticle.optString("description", "No Description Available")
+                        val link = firstArticle.optString("link", "")
+
+                        AlertDialog.Builder(this)
+                            .setTitle("Local News ($cityName)")
+                            .setMessage("$title\n\n$description")
+                            .setPositiveButton("Read More") { _, _ ->
+                                if (link.isNotEmpty()) {
+                                    val intent = Intent(Intent.ACTION_VIEW, Uri.parse(link))
+                                    startActivity(intent)
+                                }
+                            }
+                            .setNegativeButton("Close", null)
+                            .show()
+                    } else {
+                        Toast.makeText(this, "No local news found for $cityName", Toast.LENGTH_SHORT).show()
+                    }
+                }
+
+            } catch (e: Exception) {
+                runOnUiThread {
+                    Toast.makeText(this, "Error fetching news", Toast.LENGTH_SHORT).show()
+                }
             }
-
-            // fetch local news using NewsData API using local city name info
-            val newsApiKey = BuildConfig.NEWS_API_KEY
-            val newsUrl =
-                "https://newsdata.io/api/1/news?apikey=$newsApiKey&country=in&language=en&q=$cityName"
-
-            // send a request and get a response
-            val newsRequest = Request.Builder().url(newsUrl).build()
-            val newsResponse = OkHttpClient().newCall(newsRequest).execute()
-            val newsJson = JSONObject(newsResponse.body?.string() ?: "{}")
-            val articles = newsJson.optJSONArray("results")
-
-            if (articles != null && articles.length() > 0) {
-                // parse response and obtain news
-                val firstArticle = articles.getJSONObject(0)
-                val title = firstArticle.optString(
-                    "title",
-                    "No Title"
-                )
-                val description = firstArticle.optString(
-                    "description",
-                    "No Description Available"
-                )
-                val link = firstArticle.optString("link", "")
-
-                // display the news
-
-            } else {
-                // no news found
-            }
-        }.start()}
+        }.start()
+    }
 }
 ```
 
@@ -712,36 +799,47 @@ Fetches real-time weather using the user's **current geographic coordinates**.
 ```kotlin
 val btnWeather: Button = findViewById(R.id.btnWeather)
 btnWeather.setOnClickListener {
-    // fetch the current location of user
     getLocation { lat, lon ->
-        fetchLocalWeather(lat, lon)
+        if (lat != null && lon != null) {
+            fetchLocalWeather(lat, lon)
+        } else {
+            Toast.makeText(this, "Location unavailable.", Toast.LENGTH_SHORT).show()
+        }
     }
 }
 
 private fun fetchLocalWeather(latitude: Double, longitude: Double) {
-    Thread{ // run on a separate thread
-        // load credentials and links
-        val apiKey = BuildConfig.OPEN_WEATHER_MAP_API_KEY
-        val url =
-            "https://api.openweathermap.org/data/2.5/weather?lat=$latitude&lon=$longitude&units=metric&appid=$apiKey"
+    Thread {
+        try {
+            val apiKey = BuildConfig.OPEN_WEATHER_MAP_API_KEY
+            val url =
+                "https://api.openweathermap.org/data/2.5/weather?lat=$latitude&lon=$longitude&units=metric&appid=$apiKey"
 
-        // send a request and receive a response
-        val request = Request.Builder().url(url).build()
-        val response = OkHttpClient().newCall(request).execute()
-        val json = JSONObject(response.body?.string() ?: "{}")
+            val request = Request.Builder().url(url).build()
+            val response = OkHttpClient().newCall(request).execute()
+            val json = JSONObject(response.body?.string() ?: "{}")
 
-        val weatherArray = json.optJSONArray("weather")
-        val mainObject = json.optJSONObject("main")
+            val weatherArray = json.optJSONArray("weather")
+            val mainObject = json.optJSONObject("main")
 
-        val description = weatherArray
-            ?.getJSONObject(0)
-            ?.getString("description")
-            ?: "N/A"
+            val description = weatherArray?.getJSONObject(0)?.getString("description") ?: "N/A"
+            val temp = mainObject?.getDouble("temp") ?: 0.0
 
-        val temp = mainObject?.getDouble("temp") ?: 0.0
+            runOnUiThread {
+                AlertDialog.Builder(this)
+                    .setTitle("Local Weather")
+                    .setMessage("🌡️ Temperature: $temp °C\n🌥️ Condition: $description")
+                    .setPositiveButton("OK", null)
+                    .show()
+            }
+        } catch (e: Exception) {
+            runOnUiThread {
+                Toast.makeText(this, "Error fetching weather info", Toast.LENGTH_SHORT).show()
+            }
+        }
+    }.start()
+}
 
-        // display obtained weather info
-    }.start()}
 ```
 
 <a id="offline-sos"></a>
@@ -764,12 +862,16 @@ system reliability, which is particularly critical in time-sensitive emergency s
 From a security and societal perspective, preventing in-app offline APK redistribution reduces the risk of malware propagation and unauthorized software cloning. Android's security model enforces this by disallowing runtime rebuilding or re-signing of APKs, which are compile-time operations. This sandboxing mechanism blocks self-modifying or self-replicating applications, ensuring that emergency applications like E-Sentinel cannot be misused as malware carriers. As a result, offline APK transfer is limited to trusted pre-built distribution channels, such as desktop-to-device sharing or APK extractor tools that copy already signed applications without modification.
 
 ```kotlin
-private fun openSmsAppWithMessage(latitude: Double, longitude: Double) {
+private fun openSmsAppWithMessage(latitude: Double?, longitude: Double?) {
     val phoneNumber = BuildConfig.ALERT_PHONE_NUMBER
     val message =
         "SOS ALERT!\n" +
-        "Immediate help needed.\n" +
-        "Location: https://maps.google.com/?q=$latitude,$longitude"
+                "Immediate help needed.\n" +
+                if (latitude != null && longitude != null) {
+                    "Location: https://maps.google.com/?q=$latitude,$longitude"
+                } else {
+                    "Location unavailable."
+                }
 
     val intent = Intent(Intent.ACTION_SENDTO).apply {
         data = Uri.parse("smsto:$phoneNumber")
@@ -790,7 +892,7 @@ private fun openSmsAppWithMessage(latitude: Double, longitude: Double) {
 For both the neutrosophic fall detection and keyword-based SOS modules, an automatic SOS triggering mechanism is implemented. Once an SOS is initiated, the system waits for 10 seconds for user confirmation. If no response is received within this interval, the SOS alert is automatically dispatched. This design is especially critical in emergency scenarios where the user may be incapacitated, unconscious, or severely injured and therefore unable to manually confirm or cancel the alert. The automatic triggering ensures timely assistance without relying on user intervention.
 
 ```kotlin
-private fun startAutoSOSCountdown(latitude: Double, longitude: Double) {
+private fun startAutoSOSCountdown(latitude: Double?, longitude: Double?) {
     sosRunnable = Runnable {
         sendSOS(latitude, longitude)
         Toast.makeText(
